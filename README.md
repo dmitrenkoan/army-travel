@@ -27,6 +27,9 @@ Backend потребує PHP 8.3+ (на цій машині системний `
 ```bash
 cd backend
 cp .env.example .env   # якщо .env відсутній; налаштуйте DB_* на вашу PostgreSQL
+# впишіть власний GOOGLE_MAPS_API_KEY (потрібні APIs: Maps JavaScript API,
+# Places API, Directions API) — фронтенд отримує його в рантаймі через
+# GET /api/config, див. розділ нижче
 php artisan migrate --seed
 php artisan serve --port=8001
 ```
@@ -34,8 +37,6 @@ php artisan serve --port=8001
 ```bash
 cd frontend
 cp .env.example .env
-# впишіть власний VITE_GOOGLE_MAPS_API_KEY (потрібні APIs: Maps JavaScript API,
-# Places API, Directions API)
 npm install
 npm run dev   # http://localhost:5174
 ```
@@ -82,10 +83,23 @@ npm run build   # записує build/ прямо в backend/public/build (mani
   напряму в `backend/public/build/` з `base: '/build/'` та увімкненим
   `manifest`.
 - `frontend/.env.production` — задає `VITE_API_URL=/api` (відносний шлях)
-  лише для продакшн-збірки. `VITE_GOOGLE_MAPS_API_KEY` туди навмисно не
-  записаний — його треба передавати як справжню змінну середовища на етапі
-  білда (напр. у налаштуваннях білда Laravel Cloud), щоб ключ не потрапив у
-  репозиторій.
+  лише для продакшн-збірки.
+- **Google Maps ключ передається в рантаймі, не на етапі білда.** Якщо
+  платформа хостингу дозволяє задавати змінні середовища лише в рантаймі
+  (не під час build-кроку) — саме так і зроблено: фронтенд НЕ читає
+  `VITE_GOOGLE_MAPS_API_KEY` з `import.meta.env` (це значення читалось би на
+  етапі білда і вшивалось би в JS-бандл назавжди). Натомість бекенд читає
+  `GOOGLE_MAPS_API_KEY` зі свого `.env`/рантайм-середовища та віддає його
+  через публічний (без авторизації — ключ однаково видно в бандлі/мережевих
+  запитах, приховувати нема сенсу) ендпоінт `GET /api/config`
+  (`ConfigController`). Фронтенд (`GoogleMapsContext.tsx`) робить цей запит
+  одразу при завантаженні застосунку і лише після цього монтує
+  `useJsApiLoader` з реальним ключем — спеціально так, щоб не викликати хук
+  спочатку з заглушкою, а потім з реальним ключем (бібліотека
+  `@react-google-maps/api` кидає помилку "Loader must not be called again
+  with different options", якщо викликати її вдруге з іншими параметрами).
+  Реальний захист ключа — не секретність, а обмеження за HTTP referrer у
+  Google Cloud Console на ваш продакшн-домен.
 - `backend/routes/web.php` — один catch-all маршрут `Route::view('/{any}',
   'app')`, що віддає `resources/views/app.blade.php` для будь-якого шляху,
   окрім `api/*` та `up`. React Router сам розбирається з конкретним

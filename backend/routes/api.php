@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ComplaintController;
+use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\MilitaryUnitController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\TripBookingController;
@@ -11,6 +12,10 @@ use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
+
+// Public runtime config (e.g. Google Maps key) — see ConfigController for why
+// this is intentionally unauthenticated.
+Route::get('/config', [ConfigController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
