@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationsBell from '../components/NotificationsBell';
 import ComplaintButton from '../components/ComplaintButton';
+import NavDropdown from '../components/NavDropdown';
 
 const roleLabels: Record<string, string> = {
   super_admin: 'Супер адміністратор',
@@ -20,6 +21,20 @@ export default function MainLayout() {
     navigate('/login');
   };
 
+  const tripsItems = [
+    { to: '/trips', label: 'Пошук поїздок' },
+    { to: '/trips/new', label: 'Додати поїздку' },
+    { to: '/my-trips', label: 'Мої поїздки (водій)' },
+    { to: '/my-bookings', label: 'Мої бронювання' },
+  ];
+
+  const unitsItems = [
+    ...(user.role === 'super_admin' ? [{ to: '/military-units', label: 'Військові частини' }] : []),
+    ...(user.role === 'super_admin' || user.role === 'unit_admin'
+      ? [{ to: '/people', label: user.role === 'super_admin' ? 'Адміністратори' : 'Користувачі частини' }]
+      : []),
+  ];
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -27,17 +42,9 @@ export default function MainLayout() {
           🚗 Попутники
         </NavLink>
         <nav className="topbar-nav">
-          <NavLink to="/trips">Пошук поїздок</NavLink>
-          <NavLink to="/trips/new">Додати поїздку</NavLink>
-          <NavLink to="/my-trips">Мої поїздки (водій)</NavLink>
-          <NavLink to="/my-bookings">Мої бронювання</NavLink>
-          {user.role === 'super_admin' && <NavLink to="/military-units">Військові частини</NavLink>}
+          <NavDropdown label="Поїздки" items={tripsItems} />
+          <NavDropdown label="В/ч та користувачі" items={unitsItems} />
           {user.role === 'super_admin' && <NavLink to="/complaints">Скарги</NavLink>}
-          {(user.role === 'super_admin' || user.role === 'unit_admin') && (
-            <NavLink to="/people">
-              {user.role === 'super_admin' ? 'Адміністратори' : 'Користувачі частини'}
-            </NavLink>
-          )}
         </nav>
         <div className="topbar-right">
           <ComplaintButton />
