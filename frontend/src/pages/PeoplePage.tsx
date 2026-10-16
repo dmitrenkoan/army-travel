@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import api, { apiErrorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import PhoneInput, { isCompletePhone } from '../components/PhoneInput';
 import type { MilitaryUnit, User } from '../types';
 
 type RoleFilter = '' | 'unit_admin' | 'user';
@@ -62,6 +63,12 @@ export default function PeoplePage() {
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (!isCompletePhone(phone)) {
+      setError('Введіть повний номер телефону: +380 та 9 цифр.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -127,7 +134,7 @@ export default function PeoplePage() {
             </div>
             <div className="field">
               <label>Телефон</label>
-              <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <PhoneInput value={phone} onChange={setPhone} required />
             </div>
             <div className="field">
               <label>Email (необов'язково)</label>

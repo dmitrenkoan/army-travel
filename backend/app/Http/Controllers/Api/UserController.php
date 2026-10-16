@@ -50,14 +50,17 @@ class UserController extends Controller
     {
         $actor = $request->user();
 
+        $phoneRule = ['required', 'string', 'regex:'.User::PHONE_REGEX, 'unique:users,phone'];
+        $phoneMessages = ['phone.regex' => 'Номер телефону має бути у форматі +380XXXXXXXXX.'];
+
         if ($actor->isSuperAdmin()) {
             $data = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+                'phone' => $phoneRule,
                 'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
                 'password' => ['required', 'string', 'min:6'],
                 'military_unit_id' => ['required', 'exists:military_units,id'],
-            ]);
+            ], $phoneMessages);
             $data['role'] = User::ROLE_UNIT_ADMIN;
         } elseif ($actor->isUnitAdmin()) {
             if (! $actor->military_unit_id) {
@@ -66,10 +69,10 @@ class UserController extends Controller
 
             $data = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+                'phone' => $phoneRule,
                 'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
                 'password' => ['required', 'string', 'min:6'],
-            ]);
+            ], $phoneMessages);
             $data['role'] = User::ROLE_USER;
             $data['military_unit_id'] = $actor->military_unit_id;
         } else {
@@ -91,11 +94,11 @@ class UserController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'phone' => ['sometimes', 'required', 'string', 'max:30', 'unique:users,phone,'.$user->id],
+            'phone' => ['sometimes', 'required', 'string', 'regex:'.User::PHONE_REGEX, 'unique:users,phone,'.$user->id],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:6'],
             'is_active' => ['sometimes', 'boolean'],
-        ]);
+        ], ['phone.regex' => 'Номер телефону має бути у форматі +380XXXXXXXXX.']);
 
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);

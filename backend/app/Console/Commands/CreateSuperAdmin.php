@@ -20,7 +20,7 @@ class CreateSuperAdmin extends Command
     public function handle(): int
     {
         $name = $this->option('name') ?: $this->ask('ПІБ');
-        $phone = $this->option('phone') ?: $this->ask('Номер телефону (для входу)');
+        $phone = $this->option('phone') ?: $this->ask('Номер телефону у форматі +380XXXXXXXXX (для входу)');
         $email = $this->option('email') ?: $this->ask('Email (необов\'язково, Enter щоб пропустити)');
         $password = $this->option('password');
 
@@ -47,9 +47,11 @@ class CreateSuperAdmin extends Command
             'password' => $password,
         ], [
             'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30', 'unique:users,phone'],
+            'phone' => ['required', 'string', 'regex:'.User::PHONE_REGEX, 'unique:users,phone'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
+        ], [
+            'phone.regex' => 'Номер телефону має бути у форматі +380XXXXXXXXX.',
         ]);
 
         if ($validator->fails()) {

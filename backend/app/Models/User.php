@@ -25,6 +25,10 @@ class User extends Authenticatable
 
     public const ROLE_USER = 'user';
 
+    // +380 followed by exactly 9 digits — matches the mask on the frontend's
+    // phone input, so every stored number is in one consistent format.
+    public const PHONE_REGEX = '/^\+380\d{9}$/';
+
     protected function casts(): array
     {
         return [

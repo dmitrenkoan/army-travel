@@ -286,6 +286,41 @@ h1, h2, h3, h4 {
   border-color: var(--color-primary);
 }
 
+.phone-input {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.phone-input:focus-within {
+  outline: 2px solid #c6d8fc;
+  border-color: var(--color-primary);
+}
+
+.phone-input-prefix {
+  display: flex;
+  align-items: center;
+  padding: 9px 0 9px 12px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.phone-input-field {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  padding: 9px 12px 9px 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
 .field {
   display: flex;
   flex-direction: column;
