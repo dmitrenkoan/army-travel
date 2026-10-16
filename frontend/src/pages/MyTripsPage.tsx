@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api, { apiErrorMessage } from '../api/client';
 import type { Trip, TripBooking } from '../types';
 
@@ -102,6 +103,7 @@ export default function MyTripsPage() {
             <div className="trip-meta">
               <span>📅 {trip.departure_date} о {trip.departure_time}</span>
               <span>🚘 {trip.car_info}</span>
+              {trip.cargo_capacity && <span>📦 {trip.cargo_capacity}</span>}
             </div>
 
             {trip.bookings && trip.bookings.length > 0 && (
@@ -148,9 +150,14 @@ export default function MyTripsPage() {
             {trip.status === 'active' && (
               <div className="trip-footer" style={{ marginTop: 12 }}>
                 <span />
-                <button className="btn btn-sm btn-danger" onClick={() => handleCancelTrip(trip)} disabled={busyId === trip.id}>
-                  Скасувати поїздку
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Link to={`/trips/${trip.id}/edit`} className="btn btn-sm btn-secondary">
+                    Редагувати
+                  </Link>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleCancelTrip(trip)} disabled={busyId === trip.id}>
+                    Скасувати поїздку
+                  </button>
+                </div>
               </div>
             )}
           </div>

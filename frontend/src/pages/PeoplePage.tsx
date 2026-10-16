@@ -3,6 +3,8 @@ import api, { apiErrorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { MilitaryUnit, User } from '../types';
 
+type RoleFilter = '' | 'unit_admin' | 'user';
+
 export default function PeoplePage() {
   const { user: actor } = useAuth();
   const isSuperAdmin = actor?.role === 'super_admin';
@@ -12,6 +14,10 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [search, setSearch] = useState('');
+  const [unitFilter, setUnitFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('');
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -19,15 +25,17 @@ export default function PeoplePage() {
   const [militaryUnitId, setMilitaryUnitId] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
-  const load = async () => {
+  const loadPeople = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/users');
+      const { data } = await api.get('/users', {
+        params: {
+          search: search || undefined,
+          military_unit_id: isSuperAdmin ? unitFilter || undefined : undefined,
+          role: isSuperAdmin ? roleFilter || undefined : undefined,
+        },
+      });
       setPeople(data.data);
-      if (isSuperAdmin) {
-        const unitsRes = await api.get('/military-units');
-        setUnits(unitsRes.data.data);
-      }
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -36,9 +44,21 @@ export default function PeoplePage() {
   };
 
   useEffect(() => {
-    load();
+    if (isSuperAdmin) {
+      api
+        .get('/military-units')
+        .then(({ data }) => setUnits(data.data))
+        .catch((err) => setError(apiErrorMessage(err)));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live search/filter: reload shortly after the user stops typing or changes a filter.
+  useEffect(() => {
+    const timeout = setTimeout(loadPeople, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, unitFilter, roleFilter]);
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -57,7 +77,7 @@ export default function PeoplePage() {
       setEmail('');
       setPassword('');
       setMilitaryUnitId('');
-      await load();
+      await loadPeople();
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -68,7 +88,7 @@ export default function PeoplePage() {
   const toggleActive = async (person: User) => {
     try {
       await api.put(`/users/${person.id}`, { is_active: !person.is_active });
-      await load();
+      await loadPeople();
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -78,7 +98,7 @@ export default function PeoplePage() {
     if (!confirm(`Видалити користувача "${person.name}"?`)) return;
     try {
       await api.delete(`/users/${person.id}`);
-      await load();
+      await loadPeople();
     } catch (err) {
       setError(apiErrorMessage(err));
     }
@@ -88,10 +108,10 @@ export default function PeoplePage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>{isSuperAdmin ? 'Адміністратори військових частин' : 'Користувачі вашої частини'}</h1>
+          <h1>{isSuperAdmin ? 'Користувачі' : 'Користувачі вашої частини'}</h1>
           <p>
             {isSuperAdmin
-              ? 'Створюйте облікові записи адміністраторів для кожної військової частини.'
+              ? 'Усі користувачі системи. Користувачі, яким дозволено створювати інших у межах своєї частини, позначені як "Адмін".'
               : 'Створюйте облікові записи військовослужбовців вашої частини.'}
           </p>
         </div>
@@ -149,8 +169,44 @@ export default function PeoplePage() {
 
       <div className="card">
         <h3>Список</h3>
+
+        <div className="toolbar">
+          <div className="field">
+            <label>Пошук</label>
+            <input
+              className="input"
+              placeholder="ПІБ або телефон"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {isSuperAdmin && (
+            <>
+              <div className="field">
+                <label>Військова частина</label>
+                <select value={unitFilter} onChange={(e) => setUnitFilter(e.target.value)}>
+                  <option value="">Усі частини</option>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Роль</label>
+                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}>
+                  <option value="">Усі ролі</option>
+                  <option value="unit_admin">Адміни</option>
+                  <option value="user">Користувачі</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
         {loading && <p className="text-muted">Завантаження…</p>}
-        {!loading && people.length === 0 && <p className="text-muted">Ще немає жодного облікового запису.</p>}
+        {!loading && people.length === 0 && <p className="text-muted">Нічого не знайдено.</p>}
         {!loading && people.length > 0 && (
           <table>
             <thead>
@@ -165,7 +221,15 @@ export default function PeoplePage() {
             <tbody>
               {people.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.name}</td>
+                  <td>
+                    {p.name}
+                    {p.role === 'unit_admin' && (
+                      <>
+                        {' '}
+                        <span className="badge badge-role">Адмін</span>
+                      </>
+                    )}
+                  </td>
                   <td>{p.phone}</td>
                   {isSuperAdmin && <td>{p.military_unit?.name ?? '—'}</td>}
                   <td>

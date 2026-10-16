@@ -64,6 +64,7 @@ export interface Trip {
   seats_total: number;
   seats_available: number;
   car_info: string;
+  cargo_capacity: string | null;
   route_adjustment: string | null;
   additional_contact: string | null;
   notes: string | null;

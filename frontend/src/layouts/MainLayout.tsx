@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import NotificationsBell from '../components/NotificationsBell';
 import ComplaintButton from '../components/ComplaintButton';
 import NavDropdown from '../components/NavDropdown';
+import Footer from '../components/Footer';
 
 const roleLabels: Record<string, string> = {
   super_admin: 'Супер адміністратор',
@@ -31,7 +32,7 @@ export default function MainLayout() {
   const unitsItems = [
     ...(user.role === 'super_admin' ? [{ to: '/military-units', label: 'Військові частини' }] : []),
     ...(user.role === 'super_admin' || user.role === 'unit_admin'
-      ? [{ to: '/people', label: user.role === 'super_admin' ? 'Адміністратори' : 'Користувачі частини' }]
+      ? [{ to: '/people', label: user.role === 'super_admin' ? 'Користувачі' : 'Користувачі частини' }]
       : []),
   ];
 
@@ -61,6 +62,7 @@ export default function MainLayout() {
       <main className="main-content">
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 }

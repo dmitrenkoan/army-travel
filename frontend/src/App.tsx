@@ -26,6 +26,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/trips" replace />} />
           <Route path="/trips" element={<TripsSearchPage />} />
           <Route path="/trips/new" element={<CreateTripPage />} />
+          <Route path="/trips/:id/edit" element={<CreateTripPage />} />
           <Route path="/my-trips" element={<MyTripsPage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route

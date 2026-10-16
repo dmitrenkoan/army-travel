@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../api/client';
+import Footer from '../components/Footer';
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -63,6 +64,7 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
+      <Footer />
     </div>
   );
 }

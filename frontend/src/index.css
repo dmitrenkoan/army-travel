@@ -224,6 +224,7 @@ h1, h2, h3, h4 {
   cursor: pointer;
   background: var(--color-primary);
   color: var(--color-primary-contrast);
+  text-decoration: none;
   transition: background 0.15s ease;
 }
 
@@ -435,6 +436,11 @@ h1, h2, h3, h4 {
   color: var(--color-text-muted);
 }
 
+.badge-role {
+  background: #eaf0fe;
+  color: var(--color-primary-dark);
+}
+
 .trip-result {
   display: flex;
   flex-direction: column;
@@ -557,8 +563,10 @@ th {
 .login-wrap {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   padding: 20px;
 }
 
@@ -677,4 +685,20 @@ th {
   .main-content {
     padding: 16px 14px 40px;
   }
+}
+
+.app-footer {
+  text-align: center;
+  padding: 16px 20px 24px;
+  font-size: 12px;
+}
+
+.app-footer a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: var(--color-text);
+  text-decoration: underline;
 }

@@ -1,16 +1,21 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { apiErrorMessage } from '../api/client';
 import RouteBuilder, { type RouteData } from '../components/RouteBuilder';
+import type { Trip } from '../types';
 
 type Tab = 'route' | 'data';
 
 export default function CreateTripPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('route');
+  const { id } = useParams<{ id: string }>();
+  const isEdit = !!id;
+
+  const [tab, setTab] = useState<Tab>(isEdit ? 'data' : 'route');
   const [route, setRoute] = useState<RouteData | null>(null);
+  const [routeInitial, setRouteInitial] = useState<Partial<RouteData> | undefined>(undefined);
 
   const [departureDate, setDepartureDate] = useState('');
   const [departureTime, setDepartureTime] = useState('');
@@ -19,12 +24,49 @@ export default function CreateTripPage() {
   const [returnTime, setReturnTime] = useState('');
   const [seatsTotal, setSeatsTotal] = useState(1);
   const [carInfo, setCarInfo] = useState('');
+  const [cargoCapacity, setCargoCapacity] = useState('');
   const [routeAdjustment, setRouteAdjustment] = useState('');
   const [additionalContact, setAdditionalContact] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [loadingTrip, setLoadingTrip] = useState(isEdit);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isEdit) return;
+
+    api
+      .get(`/trips/${id}`)
+      .then(({ data }) => {
+        const trip: Trip = data.data;
+
+        const loadedRoute: RouteData = {
+          origin: { address: trip.origin_address, lat: trip.origin_lat, lng: trip.origin_lng },
+          destination: { address: trip.destination_address, lat: trip.destination_lat, lng: trip.destination_lng },
+          waypoints: [],
+          routePath: trip.route_path,
+          distanceMeters: trip.distance_meters,
+          durationSeconds: trip.duration_seconds,
+        };
+        setRoute(loadedRoute);
+        setRouteInitial(loadedRoute);
+
+        setDepartureDate(trip.departure_date);
+        setDepartureTime(trip.departure_time);
+        setHasReturnTrip(trip.has_return_trip);
+        setReturnDate(trip.return_date ?? '');
+        setReturnTime(trip.return_time ?? '');
+        setSeatsTotal(trip.seats_total);
+        setCarInfo(trip.car_info);
+        setCargoCapacity(trip.cargo_capacity ?? '');
+        setRouteAdjustment(trip.route_adjustment ?? '');
+        setAdditionalContact(trip.additional_contact ?? '');
+        setNotes(trip.notes ?? '');
+      })
+      .catch((err) => setError(apiErrorMessage(err, 'Не вдалося завантажити поїздку.')))
+      .finally(() => setLoadingTrip(false));
+  }, [id, isEdit]);
 
   if (!user) return null;
 
@@ -40,7 +82,7 @@ export default function CreateTripPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const { data } = await api.post('/trips', {
+      const payload = {
         origin_address: route.origin.address,
         origin_lat: route.origin.lat,
         origin_lng: route.origin.lng,
@@ -57,24 +99,40 @@ export default function CreateTripPage() {
         return_time: hasReturnTrip ? returnTime : null,
         seats_total: seatsTotal,
         car_info: carInfo,
+        cargo_capacity: cargoCapacity || null,
         route_adjustment: routeAdjustment || null,
         additional_contact: additionalContact || null,
         notes: notes || null,
-      });
-      navigate(`/my-trips`, { state: { createdTripId: data.data.id } });
+      };
+
+      if (isEdit) {
+        await api.put(`/trips/${id}`, payload);
+        navigate('/my-trips', { state: { updatedTripId: Number(id) } });
+      } else {
+        const { data } = await api.post('/trips', payload);
+        navigate('/my-trips', { state: { createdTripId: data.data.id } });
+      }
     } catch (err) {
-      setError(apiErrorMessage(err, 'Не вдалося створити поїздку.'));
+      setError(apiErrorMessage(err, isEdit ? 'Не вдалося оновити поїздку.' : 'Не вдалося створити поїздку.'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loadingTrip) {
+    return <p className="text-muted">Завантаження…</p>;
+  }
+
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1>Додати поїздку</h1>
-          <p>Спочатку побудуйте маршрут на карті, потім заповніть дані поїздки.</p>
+          <h1>{isEdit ? 'Редагувати поїздку' : 'Додати поїздку'}</h1>
+          <p>
+            {isEdit
+              ? 'Змініть маршрут або дані поїздки та збережіть зміни.'
+              : 'Спочатку побудуйте маршрут на карті, потім заповніть дані поїздки.'}
+          </p>
         </div>
       </div>
 
@@ -93,7 +151,7 @@ export default function CreateTripPage() {
         </div>
 
         {tab === 'route' && (
-          <RouteBuilder onChange={setRoute} />
+          <RouteBuilder initial={routeInitial} onChange={setRoute} />
         )}
 
         {tab === 'data' && (
@@ -197,6 +255,16 @@ export default function CreateTripPage() {
             </div>
 
             <div className="field">
+              <label>Вільний об'єм</label>
+              <input
+                className="input"
+                placeholder="200 кг або 3 м3"
+                value={cargoCapacity}
+                onChange={(e) => setCargoCapacity(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
               <label>Можливість коригувати маршрут</label>
               <input
                 className="input"
@@ -224,7 +292,7 @@ export default function CreateTripPage() {
             {error && <p className="error-text">{error}</p>}
 
             <button className="btn" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Збереження…' : 'Опублікувати поїздку'}
+              {submitting ? 'Збереження…' : isEdit ? 'Зберегти зміни' : 'Опублікувати поїздку'}
             </button>
           </div>
         )}

@@ -1,8 +1,12 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const root = import.meta.dirname
+// Not `import.meta.dirname` — that needs Node 20.11+/21.2+, and build hosts
+// with an older Node would fail here with "path argument must be of type
+// string. Received undefined". This works on any Node version with ESM.
+const root = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'destination_address', 'destination_lat', 'destination_lng',
     'route_path', 'distance_meters', 'duration_seconds',
     'departure_date', 'departure_time', 'has_return_trip', 'return_date', 'return_time',
-    'seats_total', 'seats_available', 'car_info', 'route_adjustment',
+    'seats_total', 'seats_available', 'car_info', 'cargo_capacity', 'route_adjustment',
     'additional_contact', 'notes', 'status',
 ])]
 class Trip extends Model

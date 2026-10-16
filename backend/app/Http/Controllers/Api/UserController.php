@@ -17,16 +17,30 @@ class UserController extends Controller
         $query = User::query()->with('militaryUnit')->latest();
 
         if ($actor->isSuperAdmin()) {
-            $query->where('role', User::ROLE_UNIT_ADMIN);
+            // Super admin sees everyone except other super admins — both the
+            // unit admins they created and the regular users those admins
+            // manage, so the role filter/badge below actually has something
+            // to distinguish.
+            $query->whereIn('role', [User::ROLE_UNIT_ADMIN, User::ROLE_USER]);
 
             if ($request->filled('military_unit_id')) {
                 $query->where('military_unit_id', $request->integer('military_unit_id'));
+            }
+
+            if ($request->filled('role') && in_array($request->string('role')->toString(), [User::ROLE_UNIT_ADMIN, User::ROLE_USER], true)) {
+                $query->where('role', $request->string('role')->toString());
             }
         } elseif ($actor->isUnitAdmin()) {
             $query->where('role', User::ROLE_USER)
                 ->where('military_unit_id', $actor->military_unit_id);
         } else {
             abort(403);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->where(fn ($q) => $q->where('name', 'ilike', "%{$search}%")
+                ->orWhere('phone', 'ilike', "%{$search}%"));
         }
 
         return UserResource::collection($query->paginate(50));
@@ -106,7 +120,8 @@ class UserController extends Controller
 
     private function authorizeManagement(User $actor, User $target): void
     {
-        if ($actor->isSuperAdmin() && $target->role === User::ROLE_UNIT_ADMIN) {
+        // Super admin sees and manages both roles shown in index() above.
+        if ($actor->isSuperAdmin() && $target->role !== User::ROLE_SUPER_ADMIN) {
             return;
         }
 
