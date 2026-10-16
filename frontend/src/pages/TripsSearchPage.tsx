@@ -42,7 +42,7 @@ export default function TripsSearchPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await api.get('/trips', { params: { exclude_mine: 1, date: date || undefined } });
+      const { data } = await api.get('/trips', { params: { exclude_mine: 1 } });
       setTrips(data.data);
       setSearched(false);
     } catch (err) {
@@ -50,6 +50,15 @@ export default function TripsSearchPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetFilters = () => {
+    setOriginText('');
+    setDestinationText('');
+    setOrigin(null);
+    setDestination(null);
+    setDate('');
+    loadAll();
   };
 
   useEffect(() => {
@@ -162,7 +171,7 @@ export default function TripsSearchPage() {
           Знайти поїздку
         </button>
         {searched && (
-          <button className="btn btn-secondary" style={{ marginLeft: 8 }} onClick={loadAll} disabled={loading}>
+          <button className="btn btn-secondary" style={{ marginLeft: 8 }} onClick={resetFilters} disabled={loading}>
             Показати всі поїздки
           </button>
         )}
