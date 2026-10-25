@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\TripBooking;
 use App\Services\RouteMatcher;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TripController extends Controller
 {
@@ -22,6 +23,10 @@ class TripController extends Controller
             'destination_address' => ['required', 'string', 'max:255'],
             'destination_lat' => ['required', 'numeric', 'between:-90,90'],
             'destination_lng' => ['required', 'numeric', 'between:-180,180'],
+            'waypoints' => ['nullable', 'array', 'max:20'],
+            'waypoints.*.address' => ['required', 'string', 'max:255'],
+            'waypoints.*.lat' => ['required', 'numeric', 'between:-90,90'],
+            'waypoints.*.lng' => ['required', 'numeric', 'between:-180,180'],
             'route_path' => ['required', 'array', 'min:2'],
             'route_path.*.lat' => ['required', 'numeric'],
             'route_path.*.lng' => ['required', 'numeric'],
@@ -48,9 +53,50 @@ class TripController extends Controller
         $data['seats_available'] = $data['seats_total'];
         $data['status'] = Trip::STATUS_ACTIVE;
 
-        $trip = Trip::create($data);
+        $trip = DB::transaction(function () use ($data) {
+            $trip = Trip::create($data);
+
+            if ($data['has_return_trip']) {
+                Trip::create($this->returnTripData($data));
+            }
+
+            return $trip;
+        });
 
         return new TripResource($trip->load(['driver.militaryUnit', 'militaryUnit']));
+    }
+
+    /**
+     * Builds the return trip: same driver, car, seats and notes, but origin and
+     * destination swapped, the route path reversed and departing at the return date/time.
+     */
+    private function returnTripData(array $data): array
+    {
+        $totalDistance = $data['distance_meters'];
+        $totalDuration = $data['duration_seconds'];
+
+        $routePath = array_map(fn (array $point) => [
+            'lat' => $point['lat'],
+            'lng' => $point['lng'],
+            'distance' => max(0, $totalDistance - $point['distance']),
+            'duration' => max(0, $totalDuration - $point['duration']),
+        ], array_reverse($data['route_path']));
+
+        return array_merge($data, [
+            'origin_address' => $data['destination_address'],
+            'origin_lat' => $data['destination_lat'],
+            'origin_lng' => $data['destination_lng'],
+            'destination_address' => $data['origin_address'],
+            'destination_lat' => $data['origin_lat'],
+            'destination_lng' => $data['origin_lng'],
+            'waypoints' => array_reverse($data['waypoints'] ?? []),
+            'route_path' => $routePath,
+            'departure_date' => $data['return_date'],
+            'departure_time' => $data['return_time'],
+            'has_return_trip' => false,
+            'return_date' => null,
+            'return_time' => null,
+        ]);
     }
 
     public function update(Request $request, Trip $trip)
@@ -72,6 +118,10 @@ class TripController extends Controller
             'destination_address' => ['required', 'string', 'max:255'],
             'destination_lat' => ['required', 'numeric', 'between:-90,90'],
             'destination_lng' => ['required', 'numeric', 'between:-180,180'],
+            'waypoints' => ['nullable', 'array', 'max:20'],
+            'waypoints.*.address' => ['required', 'string', 'max:255'],
+            'waypoints.*.lat' => ['required', 'numeric', 'between:-90,90'],
+            'waypoints.*.lng' => ['required', 'numeric', 'between:-180,180'],
             'route_path' => ['required', 'array', 'min:2'],
             'route_path.*.lat' => ['required', 'numeric'],
             'route_path.*.lng' => ['required', 'numeric'],

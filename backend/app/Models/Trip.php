@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'user_id', 'military_unit_id',
     'origin_address', 'origin_lat', 'origin_lng',
-    'destination_address', 'destination_lat', 'destination_lng',
+    'destination_address', 'destination_lat', 'destination_lng', 'waypoints',
     'route_path', 'distance_meters', 'duration_seconds',
     'departure_date', 'departure_time', 'has_return_trip', 'return_date', 'return_time',
     'seats_total', 'seats_available', 'car_info', 'cargo_capacity', 'route_adjustment',
@@ -31,6 +31,7 @@ class Trip extends Model
             'origin_lng' => 'decimal:7',
             'destination_lat' => 'decimal:7',
             'destination_lng' => 'decimal:7',
+            'waypoints' => 'array',
             'route_path' => 'array',
             'departure_date' => 'date',
             'return_date' => 'date',

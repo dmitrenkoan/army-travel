@@ -51,6 +51,7 @@ export interface Trip {
   destination_address: string;
   destination_lat: number;
   destination_lng: number;
+  waypoints: { address: string; lat: number; lng: number }[];
   route_path: RoutePoint[];
   distance_meters: number;
   duration_seconds: number;

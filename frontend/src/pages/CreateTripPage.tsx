@@ -14,6 +14,9 @@ export default function CreateTripPage() {
   const isEdit = !!id;
 
   const [tab, setTab] = useState<Tab>(isEdit ? 'data' : 'route');
+  // RouteBuilder is mounted on first visit to the route tab and then only hidden,
+  // so the entered points survive switching to the data tab and back.
+  const [routeTabVisited, setRouteTabVisited] = useState(!isEdit);
   const [route, setRoute] = useState<RouteData | null>(null);
   const [routeInitial, setRouteInitial] = useState<Partial<RouteData> | undefined>(undefined);
 
@@ -44,7 +47,7 @@ export default function CreateTripPage() {
         const loadedRoute: RouteData = {
           origin: { address: trip.origin_address, lat: trip.origin_lat, lng: trip.origin_lng },
           destination: { address: trip.destination_address, lat: trip.destination_lat, lng: trip.destination_lng },
-          waypoints: [],
+          waypoints: trip.waypoints ?? [],
           routePath: trip.route_path,
           distanceMeters: trip.distance_meters,
           durationSeconds: trip.duration_seconds,
@@ -72,10 +75,15 @@ export default function CreateTripPage() {
 
   const routeReady = !!route;
 
+  const goToRouteTab = () => {
+    setRouteTabVisited(true);
+    setTab('route');
+  };
+
   const handleSubmit = async () => {
     if (!route) {
       setError('Спочатку побудуйте маршрут поїздки.');
-      setTab('route');
+      goToRouteTab();
       return;
     }
 
@@ -89,6 +97,7 @@ export default function CreateTripPage() {
         destination_address: route.destination.address,
         destination_lat: route.destination.lat,
         destination_lng: route.destination.lng,
+        waypoints: route.waypoints,
         route_path: route.routePath,
         distance_meters: route.distanceMeters,
         duration_seconds: route.durationSeconds,
@@ -138,7 +147,7 @@ export default function CreateTripPage() {
 
       <div className="card">
         <div className="tabs">
-          <button className={`tab-btn ${tab === 'route' ? 'active' : ''}`} onClick={() => setTab('route')}>
+          <button className={`tab-btn ${tab === 'route' ? 'active' : ''}`} onClick={goToRouteTab}>
             1. Маршрут
           </button>
           <button
@@ -150,8 +159,10 @@ export default function CreateTripPage() {
           </button>
         </div>
 
-        {tab === 'route' && (
-          <RouteBuilder initial={routeInitial} onChange={setRoute} />
+        {routeTabVisited && (
+          <div style={{ display: tab === 'route' ? undefined : 'none' }}>
+            <RouteBuilder initial={routeInitial} onChange={setRoute} />
+          </div>
         )}
 
         {tab === 'data' && (

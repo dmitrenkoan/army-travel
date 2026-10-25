@@ -21,6 +21,7 @@ class TripResource extends JsonResource
             'destination_address' => $this->destination_address,
             'destination_lat' => (float) $this->destination_lat,
             'destination_lng' => (float) $this->destination_lng,
+            'waypoints' => $this->waypoints ?? [],
             'route_path' => $this->route_path,
             'distance_meters' => $this->distance_meters,
             'duration_seconds' => $this->duration_seconds,

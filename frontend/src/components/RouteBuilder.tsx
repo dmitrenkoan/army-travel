@@ -116,45 +116,62 @@ interface StopField {
 
 export default function RouteBuilder({ initial, onChange }: Props) {
   const { isLoaded } = useGoogleMaps();
-  const [originText, setOriginText] = useState(initial?.origin?.address ?? '');
-  const [origin, setOrigin] = useState<AddressValue | null>(initial?.origin ?? null);
 
-  const [stops, setStops] = useState<StopField[]>(() => {
-    const initialStops = [...(initial?.waypoints ?? []), ...(initial?.destination ? [initial.destination] : [])];
-    if (initialStops.length === 0) {
-      return [{ id: nextStopId(), text: '', value: null }];
+  // All route points in order: first is the origin (A), last is the destination (B),
+  // everything in between is an intermediate stop.
+  const [points, setPoints] = useState<StopField[]>(() => {
+    const initialPoints = [
+      ...(initial?.origin ? [initial.origin] : []),
+      ...(initial?.waypoints ?? []),
+      ...(initial?.destination ? [initial.destination] : []),
+    ];
+    const fields: StopField[] = initialPoints.map((p) => ({ id: nextStopId(), text: p.address, value: p }));
+    while (fields.length < 2) {
+      fields.push({ id: nextStopId(), text: '', value: null });
     }
-    return initialStops.map((s) => ({ id: nextStopId(), text: s.address, value: s }));
+    return fields;
   });
 
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
 
-  const updateStopText = (id: number, text: string) => {
-    setStops((prev) => prev.map((s) => (s.id === id ? { ...s, text } : s)));
+  const updatePointText = (id: number, text: string) => {
+    setPoints((prev) => prev.map((p) => (p.id === id ? { ...p, text } : p)));
   };
 
-  const selectStop = (id: number, v: AddressValue) => {
-    setStops((prev) => prev.map((s) => (s.id === id ? { ...s, text: v.address, value: v } : s)));
+  const selectPoint = (id: number, v: AddressValue) => {
+    setPoints((prev) => prev.map((p) => (p.id === id ? { ...p, text: v.address, value: v } : p)));
   };
 
   const addStop = () => {
-    setStops((prev) => [...prev, { id: nextStopId(), text: '', value: null }]);
+    // A new point becomes the destination; the previous destination turns into a stop.
+    setPoints((prev) => [...prev, { id: nextStopId(), text: '', value: null }]);
   };
 
-  const removeStop = (id: number) => {
-    setStops((prev) => (prev.length > 1 ? prev.filter((s) => s.id !== id) : prev));
+  const removePoint = (id: number) => {
+    setPoints((prev) => (prev.length > 2 ? prev.filter((p) => p.id !== id) : prev));
   };
 
-  const allStopsReady = origin && stops.length > 0 && stops.every((s) => !!s.value);
+  const movePoint = (index: number, delta: -1 | 1) => {
+    setPoints((prev) => {
+      const target = index + delta;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const allPointsReady = points.every((p) => !!p.value);
 
   const computeRoute = useCallback(() => {
-    if (!allStopsReady || !isLoaded || !origin) return;
+    if (!allPointsReady || !isLoaded) return;
     setError(null);
 
-    const destination = stops[stops.length - 1].value!;
-    const intermediateStops = stops.slice(0, -1).map((s) => s.value!);
+    const origin = points[0].value!;
+    const destination = points[points.length - 1].value!;
+    const intermediateStops = points.slice(1, -1).map((p) => p.value!);
 
     if (!directionsServiceRef.current) {
       directionsServiceRef.current = new google.maps.DirectionsService();
@@ -187,7 +204,7 @@ export default function RouteBuilder({ initial, onChange }: Props) {
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origin, stops, isLoaded, allStopsReady]);
+  }, [points, isLoaded, allPointsReady]);
 
   useEffect(() => {
     computeRoute();
@@ -197,36 +214,42 @@ export default function RouteBuilder({ initial, onChange }: Props) {
     <div className="route-builder">
       <label style={{ display: 'block', marginBottom: 10 }}>Задайте пункт виїзду та кінцеву точку призначення</label>
 
-      <div className="route-stop-row">
-        <span className="route-stop-marker">A</span>
-        <AddressAutocomplete
-          placeholder="Пункт виїзду"
-          value={originText}
-          onChange={setOriginText}
-          onSelect={(v) => {
-            setOriginText(v.address);
-            setOrigin(v);
-          }}
-        />
-      </div>
-
-      {stops.map((stop, index) => {
-        const isLast = index === stops.length - 1;
+      {points.map((point, index) => {
+        const isFirst = index === 0;
+        const isLast = index === points.length - 1;
         return (
-          <div className="route-stop-row" key={stop.id}>
-            <span className="route-stop-marker">{isLast ? 'B' : `${index + 1}`}</span>
+          <div className="route-stop-row" key={point.id}>
+            <span className="route-stop-marker">{isFirst ? 'A' : isLast ? 'B' : `${index}`}</span>
             <AddressAutocomplete
-              placeholder={isLast ? 'Пункт призначення' : `Зупинка ${index + 1}`}
-              value={stop.text}
-              onChange={(text) => updateStopText(stop.id, text)}
-              onSelect={(v) => selectStop(stop.id, v)}
+              placeholder={isFirst ? 'Пункт виїзду' : isLast ? 'Пункт призначення' : `Зупинка ${index}`}
+              value={point.text}
+              onChange={(text) => updatePointText(point.id, text)}
+              onSelect={(v) => selectPoint(point.id, v)}
             />
-            {stops.length > 1 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => movePoint(index, -1)}
+              disabled={isFirst}
+              title="Перемістити вище"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => movePoint(index, 1)}
+              disabled={isLast}
+              title="Перемістити нижче"
+            >
+              ↓
+            </button>
+            {points.length > 2 && (
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() => removeStop(stop.id)}
-                title="Видалити зупинку"
+                onClick={() => removePoint(point.id)}
+                title="Видалити точку"
               >
                 ✕
               </button>
@@ -245,8 +268,8 @@ export default function RouteBuilder({ initial, onChange }: Props) {
         {isLoaded ? (
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: 360 }}
-            center={origin ? { lat: origin.lat, lng: origin.lng } : { lat: 49.0, lng: 31.5 }}
-            zoom={origin ? 7 : 6}
+            center={points[0].value ? { lat: points[0].value.lat, lng: points[0].value.lng } : { lat: 49.0, lng: 31.5 }}
+            zoom={points[0].value ? 7 : 6}
             options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
           >
             {directions && <DirectionsRenderer directions={directions} />}
